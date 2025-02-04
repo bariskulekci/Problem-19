@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from "react";
 
 // Bu bileşen modal (dialog) bileşeni oluşturur ve isOpen state değişkeni true olduğunda modal açılır.
 // Görevler:
-// 1. Modal bileşenini yalnızca isOpen true olduğunda görünür hale getirin. 
+// 1. Modal bileşenini yalnızca isOpen true olduğunda görünür hale getirin.
 //    - Modal kapatıldığında, isOpen state'i false olarak güncellenmeli ve modal gizlenmelidir.
 // 2. Kullanıcı, modal dışında bir yere tıkladığında modal kapatılmalıdır (örneğin, onClick ile bu durumu yönetin).
 // 3. "Modal açık" başlığını dinamik hale getirin ve açılan modalın içeriğinin props ile özelleştirilmesine izin verin.
@@ -24,26 +24,17 @@ import { useEffect, useState } from 'react'
 export default function App() {
   const [isOpen, setOpen] = useState(false);
 
-  const openModal = () => {
-    setOpen(true);
-    console.log("Modal açıldı");
+  function openModal() {
+    setOpen(true)
+  }
+
+  function closeModal() {
+    setOpen(false)
+  }
+
+  const handleToggle = () => {
+    setOpen((pre) => !pre);
   };
-
-  const closeModal = () => {
-    setOpen(false);
-    console.log("Modal kapatıldı");
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape" && isOpen) {
-        closeModal();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
 
   return (
     <div className="h-screen flex justify-center items-center bg-gray-100">
@@ -51,13 +42,13 @@ export default function App() {
         onClick={openModal}
         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
       >
-        Modal Aç
+        Modalı Aç
       </button>
       <Modal isOpen={isOpen} onClose={closeModal}>
         <h1 className="text-lg font-bold pb-4" id="modal-title">
-          Modal Açık
+          Dinamik Modal Başlığı
         </h1>
-        <p>Bu modal içerik bölgesidir özelleştirebilirsiniz.</p>
+        <p>Bu modal içerik bölgesidir. Props ile özelleştirebilirsiniz.</p>
         <button
           onClick={closeModal}
           className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500"
@@ -70,43 +61,56 @@ export default function App() {
 }
 
 function Modal({ isOpen, onClose, children }) {
-  if (!isOpen) return null;
+  const dialogRef = useRef(null);
 
-  const handleBackdropClick = (e) => {
-    if (e.target.id === "modal-backdrop") {
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (isOpen) {
+      dialog.showModal();
+      console.log("Modal açıldı");
+      document.body.style.overflow = "hidden";
+    } else {
+      dialog.close();
+      console.log("Modal kapatıldı");
+      document.body.style.overflow = "";
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const handleBackdropClick = (event) => {
+    if (event.target === dialogRef.current) {
       onClose();
     }
   };
 
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "auto";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isOpen]);
-
   return (
-    <div
-      id="modal-backdrop"
-      onClick={handleBackdropClick}
-      className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
-      aria-hidden={!isOpen}
-      role="dialog"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4 relative"
-        role="document"
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          aria-hidden="true"
+        ></div>
+      )}
+      <dialog
+        ref={dialogRef}
+        onClick={handleBackdropClick}
+        className={`fixed inset-0 z-50 p-4 rounded-lg shadow-lg max-w-full max-h-full overflow-auto ${
+          isOpen ? "block" : "hidden"
+        }`}
+        aria-labelledby="modal-title"
       >
-        {children}
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 focus:ring-2 focus:ring-gray-300"
-          aria-label="Close modal"
-        >
-          ✕
-        </button>
-      </div>
-    </div>
+        <div className="bg-white p-6 rounded-lg">{children}</div>
+      </dialog>
+    </>
   );
 }
